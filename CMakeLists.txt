@@ -102,6 +102,7 @@ set(MSVC_DEBUG_ARGS # TODO: document
 
 # -- Debug information and debugger linkage 
 
+# TODO: Add GNU CLI support for Windows (?) [What does Ninja use?]
 if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC") # Clang for Windows, must use ClangCL
     if(NOT CMAKE_GENERATOR_TOOLSET MATCHES "ClangCL") # Error if not using ClangCL 
         # Note: In the case of the GNU CLI, static linkage is sometimes necessary for sanitizers https://stackoverflow.com/a/77577172
