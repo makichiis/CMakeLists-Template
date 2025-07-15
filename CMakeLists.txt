@@ -15,10 +15,14 @@ project(Test LANGUAGES CXX)
 # respect your development environment. 
 
 # TODO: Tests, source list, include dirs, etc. 
+# TODO: Check if multi-generation is not enabled (CONFIG should be empty) 
+# https://stackoverflow.com/questions/31661264/how-to-check-if-generator-is-a-multi-config-generator-in-a-cmakelists-txt
 
 # DEBUG_CONFIG and RELEASE_CONFIG are comma-delimited lists of preset profiles which satisfy either "Debug" or "Release" builds.
 # These may be re-defined to satisfy user-defined profiles, but by default they will satisfy the primary Visual Studio Code 
 # cmake-tools profiles. 
+
+# -- Copy starting here if you just want to get AddressSanitizer working on Windows 
 
 set(DEBUG_CONFIG "Debug")
 set(RELEASE_CONFIG "Release")
@@ -46,6 +50,8 @@ set(CLANG_DEBUG_ARGS
 # CL args: https://learn.microsoft.com/en-us/cpp/build/reference/compiler-options-listed-by-category?view=msvc-170
 # Easy-to-read ClangCL argument overview: https://clang.llvm.org/docs/UsersManual.html#windows
 # If using Visual Studio: https://devblogs.microsoft.com/cppblog/addresssanitizer-asan-for-windows-with-msvc/
+# https://github.com/microsoft/vscode-cmake-tools/blob/015abf52297c5319fb3e81b598f4b11dd82479b0/docs/cmake-presets.md
+# https://en.wikipedia.org/wiki/Pantone_448_C
 
 set(CLANGCL_DEBUG_ARGS 
     /Oy-                            # Disable omit frame pointer (synonymous with -fno-omit-frame-pointer)
@@ -114,8 +120,8 @@ elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") # Visual C++
     set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" $<$<CONFIG:${DEBUG_CONFIG}>:${MSVC_DEBUG_ARGS}>)
 endif()
 
+# -- End of Copy starting here if you just want to get AddressSanitizer working on Windows 
+
 # -- Executable definition. Anything after this line is TODO 
 
 add_executable(Test test.cpp)
-
-
