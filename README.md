@@ -14,3 +14,8 @@ A basic CMakeLists template which attempts to support AddressSanitizer with a co
 - [ ] GNU/GCC for Windows (untested)
 
 > If you are using MSVC, AddressSanitizer can be installed through the Visual Studio installer.
+
+# TODO
+- [ ] Unit testing suite 
+- [ ] Boilerplate dependency management 
+- [ ] Driver and library target variants 
