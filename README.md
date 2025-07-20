@@ -19,3 +19,4 @@ A basic CMakeLists template which attempts to support AddressSanitizer with a co
 - [ ] Unit testing suite 
 - [ ] Boilerplate dependency management 
 - [ ] Driver and library target variants 
+- [ ] Template repository configuration through GitHub
