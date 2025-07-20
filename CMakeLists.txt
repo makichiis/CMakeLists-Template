@@ -2,6 +2,7 @@ cmake_minimum_required(VERSION 3.8...3.29)
 
 project(Test LANGUAGES CXX)
 
+
 # This is a composition of my research on writing a cross-platform CMakeLists which uses proper debugging information and
 # does its best to support linkage with the AddressSanitizer library. I intend to use this in all of my important projects 
 # and will iteratively refactor and build on top of it as I see need. If you notice any issues with the template, please
@@ -22,6 +23,9 @@ project(Test LANGUAGES CXX)
 # These may be re-defined to satisfy user-defined profiles, but by default they will satisfy the primary Visual Studio Code 
 # cmake-tools profiles. 
 
+# If building on Windows from command line with MSVC back-end: 
+# https://learn.microsoft.com/en-us/cpp/build/cmake-presets-vs?view=msvc-160#run-cmake-from-the-command-line-or-a-ci-pipeline
+
 # 1. Avoid checking CMAKE_BUILD_TYPE https://stackoverflow.com/a/66083321
 # 2. Check CMAKE_<(C|CXX)>_COMPILER_ID to determine what arguments to use https://cmake.org/cmake/help/latest/variable/CMAKE_LANG_COMPILER_ID.html
 # 3. The AddressSanitizer cannot link against debug versions of the C Runtime Library (CRT), specified by /MTd and /MDd. I'm choosing to use /MD since
@@ -36,6 +40,7 @@ project(Test LANGUAGES CXX)
 # GNU TODO 
 
 # -- Copy starting here if you just want to get AddressSanitizer working on Windows 
+# https://learn.microsoft.com/en-us/cpp/build/cmake-presets-vs?view=msvc-160#run-cmake-from-the-command-line-or-a-ci-pipeline
 
 get_property(is_multi_config GLOBAL PROPERTY GENERATOR_IS_MULTI_CONFIG)
 
@@ -45,31 +50,9 @@ if(NOT is_multi_config AND NOT CMAKE_BUILD_TYPE)
     set(CMAKE_BUILD_TYPE "Release")
 endif()
 
-message("CMAKE_CXX_FLAGS_DEBUG is ${CMAKE_CXX_FLAGS_DEBUG}")
-message("CMAKE_CXX_FLAGS_RELEASE is ${CMAKE_CXX_FLAGS_RELEASE}")
+add_executable(Test test.cpp)
 
-message("Current CMAKE_CXX_FLAGS is ${CMAKE_CXX_FLAGS}")
-
-set(DEBUG_CONFIG "Debug")
-set(RELEASE_CONFIG "Release")
-# TODO: MinSizeRel, RelWithDebInfo
-
-# Arguments to pass to each compiler under "Debug" and "Release" mode. Feel free to PR for additional compiler support. 
-
-# Many clang/clang-cl arguments from https://nullprogram.com/blog/2023/04/29/
-
-set(CLANG_DEBUG_ADDITIONAL_ARGS 
-    -fno-omit-frame-pointer
-    -fsanitize=address,undefined
-    -fsanitize-trap 
-    -Wall 
-    -Wextra
-    -Wconversion 
-    -Wdouble-promotion 
-    -Wno-unused-function 
-    -Wno-sign-conversion 
-    -g3 
-)
+# Many gnu/msvc arguments from https://nullprogram.com/blog/2023/04/29/
 
 # CRT: https://learn.microsoft.com/en-us/cpp/c-runtime-library/crt-library-features?view=msvc-170
 # CL args: https://learn.microsoft.com/en-us/cpp/build/reference/compiler-options-listed-by-category?view=msvc-170
@@ -78,143 +61,83 @@ set(CLANG_DEBUG_ADDITIONAL_ARGS
 # https://github.com/microsoft/vscode-cmake-tools/blob/015abf52297c5319fb3e81b598f4b11dd82479b0/docs/cmake-presets.md
 # https://en.wikipedia.org/wiki/Pantone_448_C
 
-set(CLANGCL_DEBUG_ADDITIONAL_ARGS 
-    /Oy-                            # Disable omit frame pointer (synonymous with -fno-omit-frame-pointer)
-    /MD                             # Disable debug symbol generation for CRT dynlib (3) 
-    /W4                             # Maximum warning level 
-    /wd4146                         # Silence warning C4146
-    /wd4245                         # Silence warning C4245
-    /D_CRT_SECURE_NO_WARNINGS       # https://nullprogram.com/blog/2023/02/15/
-    /Z7                             # Maximum debug level 
-    /RTCcsu                         # https://learn.microsoft.com/en-us/cpp/build/reference/rtc-run-time-error-checks?view=msvc-170
-    -fsanitize=address,undefined    # AddressSanitizer 
+set(MSVC_DEBUG_ADDITIONAL_ARGS 
+    /W4                         # Maximum warning level 
+    /wd4146                     # Silence warning C4146
+    /wd4245                     # Silence warning C4245
+    /D_CRT_SECURE_NO_WARNINGS   # https://nullprogram.com/blog/2023/02/15/
+    /Z7                         # Maximum debug level
+    /RTCcsu                     # https://learn.microsoft.com/en-us/cpp/build/reference/rtc-run-time-error-checks?view=msvc-170
 )
 
-set(CLANGCL_ASAN_ADDITIONAL_LIBS
-    clang_rt.asan_dynamic-x86_64.lib 
-    clang_rt.asan_dynamic_runtime_thunk-x86_64.lib
+set(GNU_DEBUG_ADDITIONAL_ARGS 
+    -mno-omit-leaf-frame-pointer #
+    -fno-omit-frame-pointer # 
+    -Wall                   # Enable most warning flags 
+    -Wextra                 # Enable additional warning flags 
+    -Wconversion            # https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wconversion
+    -Wdouble-promotion      # https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wno-double-promotion
+    -Wno-unused-function    # Suppress unused function warning 
+    -Wno-sign-conversion    # Suppress sign conversion warning 
+    -g3                     # Maximum debug level
 )
 
-set(CLANGCL_RELEASE_ADDITIONAL_ARGS # TODO 
-    /MT 
-)
+# -- Append flags to CMAKE_CXX_FLAGS_ (and additional workarounds) depending on build environment
 
-set(MSVC_DEBUG_ADDITIONAL_ARGS # TODO: document
-    /Oy- # Disable omit frame pointer (synonymous with -fno-omit-frame-pointer)
-    /MD  # Disable debug symbol generation for CRT dynlib (3) 
-    /W4 
-    /wd4146 
-    /wd4245 
-    /D_CRT_SECURE_NO_WARNINGS 
-    /Z7 
-    /RTCcsu 
-    /fsanitize=address 
-    /fsanitize=undefined 
-    /Od 
-)
+message(STATUS "Using generator ${CMAKE_GENERATOR} with ${CMAKE_CXX_COMPILER_ID}")
 
-message("${CMAKE_GENERATOR_TOOLSET}, ${CMAKE_CXX_COMPILER_ID}")
+# -- Build environment flags defined at the highest level in order to easily refactor flag conditions.
 
-# Append flags to CMAKE_CXX_FLAGS_ depending on build environment
-set(is_clangcl CMAKE_GENERATOR_TOOLSET MATCHES "ClangCL")
-set(is_msvc NOT is_clangcl AND CMAKE_CXX_COMPILER_ID STREQUAL "MSVC")
-set(is_gnu_clang CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+# Workaround to compare clang and clangcl when using Ninja. https://learn.microsoft.com/en-us/cpp/build/cmake-presets-vs?view=msvc-160  
+if(CMAKE_GENERATOR_TOOLSET MATCHES "ClangCL" OR CMAKE_CXX_COMPILER MATCHES "clang-cl") 
+    set(is_clangcl TRUE)
+endif()
 
-# TODO: Support for Clang GNU CLI for Windows with Ninja 
+if(NOT MSVC AND (CMAKE_CXX_COMPILER_ID STREQUAL "Clang" OR CMAKE_CXX_COMPILER_ID STREQUAL "GNU"))
+    set(is_gnu_clang TRUE)
+endif()
 
-# -- Debug information and debugger linkage 
+if(NOT (MSVC OR is_gnu_clang))
+    message(WARNING "Compiler toolset ${CMAKE_CXX_COMPILER_ID} is not explicitly supported by this template, so AddressSanitizer may be unsupported.")
+endif()
 
-# set(PFX "(${PROJECT_NAME}):")
+if(WIN32 AND is_gnu_clang) # https://stackoverflow.com/questions/14714877/mismatch-detected-for-runtimelibrary
+    message("NOTE: GNU/Clang will only work with the AddressSanitizer if you have a non-MSVC C runtime. If you are using Clang with MSVC, use ClangCL instead.")
+    message("Current compiler: ${CMAKE_CXX_COMPILER}")
+endif()
 
-# message("${PFX} ${CMAKE_CXX_COMPILER_ID}, ${CMAKE_CXX_SIMULATE_ID}, ${CMAKE_GENERATOR_TOOLSET}")
+# -- Additional compiler-gnostic arguments for each configuration 
 
-# set(DOES_THIS_WORK $<$<CONFIG:${DEBUG_CONFIG}>:${CLANGCL_DEBUG_ARGS}>)
-# set(DOES_THIS_ALSO_WORK $<$<CONFIG:${DEBUG_CONFIG}>:${CLANGCL_ASAN_LIBS}>)
+if(MSVC)
+    message(STATUS "Using MSVC arguments.")
 
-# ClangCL
-# If in debug:
-#   If in multi-config:
-#     Set generator debug args
-#   If in single-config:
-#     Set trivial debug args
-# If in release:
-#   If in multi-config:
-#     Set generator debug args
-#   If in single-config:
-#     Set trivial debug args
+    string(REPLACE ";" " " ARGS_DEBUG "${MSVC_DEBUG_ADDITIONAL_ARGS}")
+    string(REPLACE ";" " " ARGS_RELEASE "${MSVC_RELEASE_ADDITIONAL_ARGS}")
+elseif(is_gnu_clang)
+    message(STATUS "Using GNU arguments.")
 
+    string(REPLACE ";" " " ARGS_DEBUG "${GNU_DEBUG_ADDITIONAL_ARGS}")
+    string(REPLACE ";" " " ARGS_RELEASE "${GNU_RELEASE_ADDITIONAL_ARGS}")
+endif()
 
+set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${ARGS_DEBUG}")
+set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${ARGS_RELEASE}")
 
-# ClangCL
-# If in multi-config:
-#   If in debug:
-#     Set debug genargs
-#   If in release:
-#     Set release genargs
-# If in single-config:
-#   If debug set:
-#     Set debug args
-#   If release set:
-#     Set release args
+# https://learn.microsoft.com/en-us/cpp/build/cmake-presets-vs?view=msvc-160#enable-addresssanitizer-for-windows-and-linux
+option(ASAN_ENABLED "BUild this target with AddressSanitizer" ON)
 
-# MSVC
-# If in multi-config:
-#   If in debug:
-#     Set debug genargs
-#   If in release:
-#     Set release genargs
-# If in single-config:
-#   If debug set:
-#     Set debug args
-#   If release set:
-#     Set release args
+if(ASAN_ENABLED)
+    if(MSVC)
+        target_compile_options(Test PUBLIC $<$<CONFIG:Debug>:/fsanitize=address>)
+        if(is_clangcl) # ClangCL linkage workaround 
+            target_compile_options(Test PUBLIC $<$<CONFIG:Debug>:/MD /Oy->)
+            target_link_libraries(Test PUBLIC $<$<CONFIG:Debug>:clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib>)
+        endif()
+    else()
+        target_compile_options(Test PUBLIC -fsanitize=address -fno-omit-frame-pointer)
+        target_link_options(Test PUBLIC -fsanitize=address)
+    endif()
+endif()
 
-# Clang 
-# If in multi-config:
-#   If in debug:
-#     Set debug genargs
-#   If in release:
-#     Set release genargs
-# If in single-config:
-#   If debug set:
-#     Set debug args
-#   If release set:
-#     Set release args
-
-# if(is_multi_config)
-#     message("${PFX} Generator is multi-config. Will use multi-config expressions.")
-
-#     if(NOT (CMAKE_CONFIGURATION_TYPES MATCHES ${DEBUG_CONFIG} AND CMAKE_CONFIGURATION_TYPES MATCHES ${RELEASE_CONFIG}))
-#         message(FATAL_ERROR "${PFX} Mismatched configuration types. The available configurations are ${CMAKE_CONFIGURATION_TYPES}, but ${DEBUG_CONFIG};${RELEASE_CONFIG} are specified in this CMakeLists.")
-#     endif()
-
-#     # TODO: Add GNU CLI support for Windows (?) [What does Ninja use?]
-#     if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang" AND CMAKE_CXX_SIMULATE_ID STREQUAL "MSVC") # Clang for Windows, must use ClangCL
-#         if(NOT CMAKE_GENERATOR_TOOLSET MATCHES "ClangCL") # Error if not using ClangCL 
-#             # Note: In the case of the GNU CLI, static linkage is sometimes necessary for sanitizers https://stackoverflow.com/a/77577172
-#             message(FATAL_ERROR "${PFX} Must use clang-cl.exe if using CLANG with MSVC. GNU CLI not supported.")
-#         endif()
-
-#         message("${PFX} ClangCL specified. Using MSVC/ClangCL arguments for debugger linkage.")
-
-#         # TODO: Move debug args elsewhere so they're actually configurable
-#         add_compile_options("${DOES_THIS_WORK}") 
-#         add_link_options("${DOES_THIS_ALSO_WORK}") # (4)
-#     elseif(CMAKE_CXX_COMPILER_ID STREQUAL "MSVC") # Visual C++ 
-#         message("${PFX} MSVC specified. Using MSVC arguments for debugger linkage.")
-
-#         set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS}" $<$<CONFIG:${DEBUG_CONFIG}>:${MSVC_DEBUG_ARGS}>)
-#         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}" $<$<CONFIG:${DEBUG_CONFIG}>:${MSVC_DEBUG_ARGS}>)
-#     endif()
-# else()
-#     message("Using single-configuration settings.")
-
-#     add_compile_options("${CLANGCL_DEBUG_ARGS}")
-#     add_link_options("${CLANGCL_ASAN_LIBS}")
-# endif()
 
 # -- End of Copy starting here if you just want to get AddressSanitizer working on Windows 
-
-# -- Executable definition. Anything after this line is TODO 
-
-add_executable(Test test.cpp)
