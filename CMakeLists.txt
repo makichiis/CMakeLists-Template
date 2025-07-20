@@ -65,7 +65,7 @@ set(MSVC_DEBUG_ADDITIONAL_ARGS
     /wd4245                         # Silence warning C4245
     /D_CRT_SECURE_NO_WARNINGS       # https://nullprogram.com/blog/2023/02/15/
     /Z7                             # Maximum debug level
-    /RTCsu                         # https://learn.microsoft.com/en-us/cpp/build/reference/rtc-run-time-error-checks?view=msvc-170
+    /RTCsu                          # https://learn.microsoft.com/en-us/cpp/build/reference/rtc-run-time-error-checks?view=msvc-170
 )
 
 set(GNU_DEBUG_ADDITIONAL_ARGS 
@@ -102,7 +102,10 @@ if(WIN32 AND is_gnu_clang) # https://stackoverflow.com/questions/14714877/mismat
     message("Current compiler: ${CMAKE_CXX_COMPILER}")
 endif()
 
-# -- Additional compiler-gnostic arguments for each configuration. Intentionally redundant for scalibility
+# -- Additional compiler-gnostic arguments for each configuration. Intentionally redundant for scalability
+
+# https://ecrafter.wordpress.com/2012/04/24/cmake-tutorial-part-2/
+# https://web.archive.org/web/20190722182127/http://voices.canonical.com/jussi.pakkanen/2013/03/26/a-list-of-common-cmake-antipatterns/
 
 if(MSVC)
     message(STATUS "Using MSVC arguments.")
