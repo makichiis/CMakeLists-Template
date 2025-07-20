@@ -27,8 +27,6 @@ set(MSVC_DEBUG_ADDITIONAL_ARGS
 )
 
 set(GNU_DEBUG_ADDITIONAL_ARGS 
-    -mno-omit-leaf-frame-pointer    # Required for frame pointer omission in clang
-    -fno-omit-frame-pointer         # Omitting the frame pointer makes debugging on some distributions impossible 
     -Wall                           # Enable most warning flags 
     -Wextra                         # Enable additional warning flags 
     -Wconversion                    # https://gcc.gnu.org/onlinedocs/gcc/Warning-Options.html#index-Wconversion
@@ -88,7 +86,7 @@ if(MSVC)
         set(ASAN_LINK_ARGS clang_rt.asan_dynamic-x86_64.lib clang_rt.asan_dynamic_runtime_thunk-x86_64.lib) # https://stackoverflow.com/a/76703293
     endif()
 else()
-    set(ASAN_COMPILE_ARGS -fsanitize=address)
+    set(ASAN_COMPILE_ARGS -fsanitize=address -fno-omit-frame-pointer -mno-omit-leaf-frame-pointer)
     set(ASAN_LINK_ARGS -fsanitize=address)
 endif()
 
