@@ -102,7 +102,7 @@ if(WIN32 AND is_gnu_clang) # https://stackoverflow.com/questions/14714877/mismat
     message("Current compiler: ${CMAKE_CXX_COMPILER}")
 endif()
 
-# -- Additional compiler-gnostic arguments for each configuration. Intentionally redundant for scalability
+# -- Additional compiler-gnostic arguments for each configuration
 
 # https://ecrafter.wordpress.com/2012/04/24/cmake-tutorial-part-2/
 # https://web.archive.org/web/20190722182127/http://voices.canonical.com/jussi.pakkanen/2013/03/26/a-list-of-common-cmake-antipatterns/
@@ -110,17 +110,14 @@ endif()
 if(MSVC)
     message(STATUS "Using MSVC arguments.")
 
-    string(REPLACE ";" " " ARGS_DEBUG "${MSVC_DEBUG_ADDITIONAL_ARGS}")
-    string(REPLACE ";" " " ARGS_RELEASE "${MSVC_RELEASE_ADDITIONAL_ARGS}")
+    set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG} ${MSVC_DEBUG_ADDITIONAL_ARGS})
+    set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} ${MSVC_RELEASE_ADDITIONAL_ARGS})
 elseif(is_gnu_clang)
     message(STATUS "Using GNU arguments.")
 
-    string(REPLACE ";" " " ARGS_DEBUG "${GNU_DEBUG_ADDITIONAL_ARGS}")
-    string(REPLACE ";" " " ARGS_RELEASE "${GNU_RELEASE_ADDITIONAL_ARGS}")
+    set(CMAKE_CXX_FLAGS_DEBUG ${CMAKE_CXX_FLAGS_DEBUG} ${GNU_DEBUG_ADDITIONAL_ARGS})
+    set(CMAKE_CXX_FLAGS_RELEASE ${CMAKE_CXX_FLAGS_RELEASE} ${GNU_RELEASE_ADDITIONAL_ARGS})
 endif()
-
-set(CMAKE_CXX_FLAGS_DEBUG "${CMAKE_CXX_FLAGS_DEBUG} ${ARGS_DEBUG}")
-set(CMAKE_CXX_FLAGS_RELEASE "${CMAKE_CXX_FLAGS_RELEASE} ${ARGS_RELEASE}")
 
 # https://learn.microsoft.com/en-us/cpp/build/cmake-presets-vs?view=msvc-160#enable-addresssanitizer-for-windows-and-linux
 option(ASAN_ENABLED "Build this target with AddressSanitizer" ON)
